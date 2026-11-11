@@ -1,0 +1,45 @@
+# Build the official Irodori-TTS-Server image and push it to GHCR.
+# Place this file at .github/workflows/build-image.yml in the image repo.
+# The image contains ONLY the official open-source server (no voice data,
+# no model weights), so the package can be public for RunPod to pull.
+name: build-image
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Free up disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /opt/ghc /usr/local/lib/android /opt/hostedtoolcache/CodeQL
+          df -h
+
+      - name: Check out the official server (pinned)
+        uses: actions/checkout@v4
+        with:
+          repository: Aratako/Irodori-TTS-Server
+          ref: ce06bebd0ed243cc0fb6999ef7827b6e45d0d9d2
+          path: server
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: server
+          file: server/Dockerfile
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/irodori-tts-server:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
